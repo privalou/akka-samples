@@ -1,0 +1,31 @@
+# build
+package-lock.json
+yarn.lock
+node_modules/
+
+# IDEs and editors
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.idea/
+*.iml
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# misc
+*.log
+.attach_pid*
+
+# System Files
+.DS_Store
+Thumbs.db
+
+

@@ -19,6 +19,10 @@ public class Parent extends AbstractActor {
 
     private final Map<ActorRef, String> actorToChildId = new HashMap<>();
 
+    private int count = 0;
+
+    private boolean status = true;
+
 
     public static Props props() {
         return Props.create(Parent.class, Parent::new);
@@ -43,7 +47,6 @@ public class Parent extends AbstractActor {
     }
 
 
-
     @Override
     public void preStart() {
         log.info("Parent started");
@@ -65,7 +68,7 @@ public class Parent extends AbstractActor {
     private void run(Start start) {
         for (Map.Entry<String, ActorRef> child : childIdToActor.entrySet()) {
             ActorRef childActor = child.getValue();
-            childActor.forward(Child.Сheck.class, getContext());
+            childActor.tell(new Child.Check(), getSelf());
         }
     }
 
@@ -79,9 +82,9 @@ public class Parent extends AbstractActor {
             log.info("Creating child actor for {}", childId);
             ActorRef childActor = getContext().actorOf(Child.props(childId), "child-" + childId);
             getContext().watch(childActor);
-            childActor.forward(trackMsg, getContext());
             childIdToActor.put(childId, childActor);
             actorToChildId.put(childActor, childId);
+            childActor.tell(trackMsg, getSelf());
         }
     }
 
@@ -101,11 +104,39 @@ public class Parent extends AbstractActor {
                 .match(Terminated.class, this::onTerminated)
                 .match(CheckPassed.class,
                         r -> {
-                            log.info("111111");
+                            log.info("Check passed");
+                            count++;
+                            if (count == childIdToActor.size()) {
+                                count = 0;
+                                if (status) {
+                                    for (Map.Entry<String, ActorRef> child : childIdToActor.entrySet()) {
+                                        ActorRef childActor = child.getValue();
+                                        childActor.tell(new Child.Transaction(), getSelf());
+                                    }
+                                } else {
+                                    log.info("END");
+                                }
+                            }
+
+                        })
+                .match(CheckFailed.class,
+                        r -> {
+                            log.info("Check failed");
+                            status = false;
                         })
                 .match(TransactionPassed.class,
                         r -> {
-                            log.info("222222");
+                            log.info("Transaction passed");
+                            count++;
+                            if (status && count == childIdToActor.size()) {
+                                log.info("END TRANSACTION");
+                            }
+                        })
+                .match(TransactionFailed.class,
+                        r -> {
+                            log.info("Transaction failed");
+                            count++;
+                            status = false;
                         })
                 .build();
     }

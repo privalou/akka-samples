@@ -1,18 +1,18 @@
 package device;
 
 import akka.actor.AbstractActor;
+import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-
-
-import java.util.Optional;
 
 public class Child extends AbstractActor {
 
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
 
     private final String childId;
+
+    private boolean status = true;
 
     private String value = "";
 
@@ -26,19 +26,13 @@ public class Child extends AbstractActor {
         return Props.create(Child.class, () -> new Child(childId));
     }
 
-    public static final class Сheck {
-        public Сheck() {
-        }
+    public static final class Check {
     }
 
     public static final class Transaction {
-        public Transaction() {
-        }
     }
 
     public static final class CanselTransaction {
-        public CanselTransaction() {
-        }
     }
 
     @Override
@@ -55,16 +49,25 @@ public class Child extends AbstractActor {
     public Receive createReceive() {
         return receiveBuilder()
                 .match(Parent.RequestChild.class,
-                        r -> getSender().tell(new Parent.ChildRegistered(), getSelf()))
-                .match(Сheck.class,
+                        r -> {
+                            log.info("000000");
+                            getSender().tell(new Parent.ChildRegistered(), getSelf());
+                })
+                .match(Check.class,
                         r -> {
                             log.info("Readiness check: {}", childId);
-                            getSender().tell(Parent.CheckPassed.class, getSelf());
+                            if (status) {
+                                getSender().tell(new Parent.CheckPassed(), getSelf());
+                            }
+                            else {
+                                getSender().tell(new Parent.CheckFailed(), getSelf());
+                            }
+
                         })
                 .match(Transaction.class,
                         r -> {
-                            log.info("Readiness check: {}", childId);
-                            getSender().tell(Parent.TransactionPassed.class, getSelf());
+                            log.info("Conducting transaction: {}", childId);
+                            getSender().tell(new Parent.TransactionPassed(), getSelf());
                         }).build();
 
     }

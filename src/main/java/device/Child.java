@@ -12,18 +12,23 @@ public class Child extends AbstractActor {
 
     private final String childId;
 
-    private boolean status = true;
+    private boolean status1 = true;
 
-    private String value = "";
+    private boolean status2 = true;
 
-    private String prevValue = "";
+    private String value = "0";
 
-    private Child(String childId) {
+    private String prevValue = "-1";
+
+    private Child(String childId, boolean status1, boolean status2, String prevValue) {
         this.childId = childId;
+        this.status1 = status1;
+        this.status2 = status2;
+        this.prevValue = prevValue;
     }
 
-    static Props props(String childId) {
-        return Props.create(Child.class, () -> new Child(childId));
+    static Props props(String childId, boolean status1, boolean status2, String prevValue) {
+        return Props.create(Child.class, () -> new Child(childId, status1, status2, prevValue));
     }
 
     public static final class Check {
@@ -32,7 +37,7 @@ public class Child extends AbstractActor {
     public static final class Transaction {
     }
 
-    public static final class CanselTransaction {
+    public static final class CancelTransaction {
     }
 
     @Override
@@ -56,7 +61,7 @@ public class Child extends AbstractActor {
                 .match(Check.class,
                         r -> {
                             log.info("Readiness check: {}", childId);
-                            if (status) {
+                            if (status1) {
                                 getSender().tell(new Parent.CheckPassed(), getSelf());
                             }
                             else {
@@ -67,8 +72,26 @@ public class Child extends AbstractActor {
                 .match(Transaction.class,
                         r -> {
                             log.info("Conducting transaction: {}", childId);
-                            getSender().tell(new Parent.TransactionPassed(), getSelf());
-                        }).build();
+                            if (status2) {
+                                log.info("Transaction successful: {}", childId);
+                                value = "1";
+                                log.info("Value: {}", value);
+                                getSender().tell(new Parent.TransactionPassed(), getSelf());
+                            }
+                            else {
+                                log.info("Transaction failed: {}", childId);
+                                getSender().tell(new Parent.TransactionFailed(), getSelf());
+                            }
+
+                        })
+                .match(CancelTransaction.class,
+                        r -> {
+                            log.info("Cancel transaction: {}", childId);
+                            value = prevValue;
+                            log.info("Value: {}", value);
+
+                        })
+                .build();
 
     }
 }

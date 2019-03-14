@@ -59,9 +59,15 @@ public class Parent extends AbstractActor {
 
     public static final class RequestChild {
         final String childId;
+        final boolean status1;
+        final boolean status2;
+        final String prevValue;
 
-        public RequestChild(String childId) {
+        public RequestChild(String childId, boolean status1, boolean status2, String prevValue) {
             this.childId = childId;
+            this.status1 = status1;
+            this.status2 = status2;
+            this.prevValue = prevValue;
         }
     }
 
@@ -75,12 +81,15 @@ public class Parent extends AbstractActor {
 
     private void onTrackDevice(Parent.RequestChild trackMsg) {
         String childId = trackMsg.childId;
+        boolean status1 = trackMsg.status1;
+        boolean status2 = trackMsg.status2;
+        String prevValue = trackMsg.prevValue;
         ActorRef ref = childIdToActor.get(childId);
         if (ref != null) {
             ref.forward(trackMsg, getContext());
         } else {
             log.info("Creating child actor for {}", childId);
-            ActorRef childActor = getContext().actorOf(Child.props(childId), "child-" + childId);
+            ActorRef childActor = getContext().actorOf(Child.props(childId, status1, status2, prevValue));
             getContext().watch(childActor);
             childIdToActor.put(childId, childActor);
             actorToChildId.put(childActor, childId);
@@ -106,15 +115,11 @@ public class Parent extends AbstractActor {
                         r -> {
                             log.info("Check passed");
                             count++;
-                            if (count == childIdToActor.size()) {
+                            if (count == childIdToActor.size() && status) {
                                 count = 0;
-                                if (status) {
-                                    for (Map.Entry<String, ActorRef> child : childIdToActor.entrySet()) {
-                                        ActorRef childActor = child.getValue();
-                                        childActor.tell(new Child.Transaction(), getSelf());
-                                    }
-                                } else {
-                                    log.info("END");
+                                for (Map.Entry<String, ActorRef> child : childIdToActor.entrySet()) {
+                                    ActorRef childActor = child.getValue();
+                                    childActor.tell(new Child.Transaction(), getSelf());
                                 }
                             }
 

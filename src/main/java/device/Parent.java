@@ -136,11 +136,23 @@ public class Parent extends AbstractActor {
                             if (status && count == childIdToActor.size()) {
                                 log.info("END TRANSACTION");
                             }
+                            else if (!status && count == childIdToActor.size()) {
+                                for (Map.Entry<String, ActorRef> child : childIdToActor.entrySet()) {
+                                    ActorRef childActor = child.getValue();
+                                    childActor.tell(new Child.CancelTransaction(), getSelf());
+                                }
+                            }
                         })
                 .match(TransactionFailed.class,
                         r -> {
                             log.info("Transaction failed");
                             count++;
+                            if (count == childIdToActor.size()) {
+                                for (Map.Entry<String, ActorRef> child : childIdToActor.entrySet()) {
+                                    ActorRef childActor = child.getValue();
+                                    childActor.tell(new Child.CancelTransaction(), getSelf());
+                                }
+                            }
                             status = false;
                         })
                 .build();
